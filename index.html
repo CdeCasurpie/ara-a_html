@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Araña Procedural</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #010; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let head = { x: canvas.width / 2, y: canvas.height / 2, radius: 5 };
+        let legPoints = [];
+        let realLegs = [];
+        let numLegs = 6;
+        let radius = 70;
+        let moveThreshold = 130;
+        let trails = []; // Almacena las huellas
+        let target = { x: head.x, y: head.y };
+        
+        for (let i = 0; i < numLegs; i++) {
+            let angle = (Math.PI * 2 * i) / numLegs;
+            legPoints.push({
+                x: head.x + Math.cos(angle) * radius,
+                y: head.y + Math.sin(angle) * radius,
+                baseAngle: angle,
+            });
+            realLegs.push({
+                x: head.x + Math.cos(angle) * radius,
+                y: head.y + Math.sin(angle) * radius,
+                baseAngle: angle,
+            });
+        }
+
+        document.addEventListener("mousemove", (e) => {
+            target.x = e.clientX;
+            target.y = e.clientY;
+        });
+        
+        function moveTowards(target, speed) {
+            let dx = target.x - head.x;
+            let dy = target.y - head.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 10) {
+                head.x += (dx / dist) * speed;
+                head.y += (dy / dist) * speed;
+            }
+        }
+
+        function updateLegs() {
+            realLegs.forEach((leg) => {
+                let dx = leg.x - head.x;
+                let dy = leg.y - head.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > moveThreshold) {
+                    // Agregar huella antes de actualizar
+                    trails.push({ x: leg.x, y: leg.y, alpha: 0.4 });
+                    leg.x = head.x + Math.cos(leg.baseAngle) * radius;
+                    leg.y = head.y + Math.sin(leg.baseAngle) * radius;
+                } else if (dist < moveThreshold/4) {
+                    trails.push({ x: leg.x, y: leg.y, alpha: 0.4 });
+                    leg.x = head.x + Math.cos(leg.baseAngle) * radius;
+                    leg.y = head.y + Math.sin(leg.baseAngle) * radius;
+                }
+            });
+
+            legPoints.forEach((leg, index) => {
+                const legSpeed = 0.6;
+                let realx = realLegs[index].x;
+                let realy = realLegs[index].y;
+                leg.x += (realx - leg.x) * legSpeed;
+                leg.y += (realy - leg.y) * legSpeed;
+
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            moveTowards(target, 10);
+            updateLegs();
+            
+            // Dibujar huellas
+            trails.forEach((trail, index) => {
+                ctx.fillStyle = `rgba(255, 255, 0, ${trail.alpha})`;
+                ctx.beginPath();
+                ctx.arc(trail.x, trail.y, 1, 0, Math.PI * 2);
+                ctx.fill();
+                trail.alpha -= 0.01; // Desvanecer huella
+                if (trail.alpha <= 0) trails.splice(index, 1);
+            });
+            
+            // Dibujar cabeza
+            ctx.fillStyle = "black";
+            ctx.beginPath();
+            ctx.arc(head.x, head.y, head.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Dibujar patas con efecto neón y curvas
+            ctx.strokeStyle = "#0f0";
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = "#0f0";
+            
+            legPoints.forEach((leg) => {
+                ctx.beginPath();
+                ctx.moveTo(head.x, head.y);
+                let midX = (head.x + leg.x) / 2 + (Math.random() - 0.5) * 30;
+                let midY = (head.y + leg.y) / 2 + (Math.random() - 0.5) * 30;
+                ctx.quadraticCurveTo(midX, midY, leg.x, leg.y);
+                ctx.stroke();
+            });
+            
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>
